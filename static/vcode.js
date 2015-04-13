@@ -347,6 +347,13 @@
         return Position
     }());
 
+    //uid
+    var uid = 0;
+
+    function getUid() {
+        return uid++;
+    }
+
     //Vcode
     var Vcode = exports.Vcode = klass(Events, {
         __construct: function (config) {
@@ -360,13 +367,15 @@
                 id: '',
                 size: 6,
                 className: '',
+                hasHiddenInput: true,
                 baseElement: document.body,
                 hasMask: false,
-                oncheckfase: function () {
+                position: [],
+                oncheckfalse: function () {
                 },
                 onchecktrue: function () {
                 },
-                template: '<div id="vcode_wrap" class="vcode_wrap">' +
+                template: '<div class="vcode_wrap">' +
                 '<div class="vcode_img_con">' +
                 '<img class="vcode_img" >' +
                 '</div>' +
@@ -385,13 +394,18 @@
             this.result = false;
 
             this.id = this.setting.id;
+            this.uid = getUid();
+
             this.size = this.setting.size;
 
 
             this.element = this.__createDom();
+
             if (this.setting.className) {
                 this.element.addClass(this.setting.className);
             }
+
+
             this.isShow = false;
             this.value = '';
 
@@ -417,9 +431,27 @@
         },
         __createDom: function () {
             var dom = $(this.setting.template);
+            dom.attr({
+                id: 'vcode_' + this.uid,
+                uid: this.uid
+            });
             if (this.setting.hasCloser) {
                 this.closer = $('<a class="vcode_closer">×</a>');
                 dom.prepend(this.closer)
+            }
+
+            if (this.setting.hasHiddenInput) {
+                if (typeof this.setting.hasHiddenInput == 'string') {
+                    this.hiddenInput = $('<input type="hidden" name="' + this.setting.hasHiddenInput + '" id="' + this.setting.hasHiddenInput + '">');
+                } else if (typeof this.setting.hasHiddenInput == 'boolean') {
+                    this.hiddenInput = $('<input type="hidden" name="vcode_hidden_input_' + this.uid + '" id="vcode_hidden_input_' + this.uid + '">');
+
+                }
+                if(this.setting.baseInput){
+                    this.input.after(this.hiddenInput);
+                }else{
+                    dom.prepend(this.hiddenInput)
+                }
             }
 
             if (this.setting.hasMask) {
@@ -451,7 +483,9 @@
 
         },
         __bindEventByRole: function (btn, role) {
-            btn.on('click', $.proxy(this[role], this));
+            btn.on('click', $.proxy(function () {
+                this[role] && this[role]();
+            }, this));
         },
         __setPosition: function () {
             if (this.setting.baseElement == document.body) {
@@ -462,15 +496,28 @@
                     marginLeft: '-160px'
                 });
             } else {
-                this.position({
-                    element: this.element,
-                    x: 0,
-                    y: 0
-                }, {
-                    element: this.baseElement,
-                    x: 0,
-                    y: '100%'
-                })
+                if (this.setting.position.length) {
+                    this.position({
+                        element: this.element,
+                        x: this.setting.position[0].x,
+                        y: this.setting.position[0].y
+                    }, {
+                        element: this.baseElement,
+                        x: this.setting.position[1].x,
+                        y: this.setting.position[1].y
+                    })
+                } else {
+                    this.position({
+                        element: this.element,
+                        x: 0,
+                        y: 0
+                    }, {
+                        element: this.baseElement,
+                        x: 0,
+                        y: '100%'
+                    })
+                }
+
             }
 
         },
@@ -548,7 +595,11 @@
             );
             return this;
         },
-
+        enValueHiddenInput: function (value) {
+            if (this.hiddenInput && this.hiddenInput.length) {
+                this.hiddenInput.val(value);
+            }
+        },
         show: function () {
             if (!this.__imgShow) {
                 this.__loadImg();
@@ -580,6 +631,8 @@
         },
         change: function () {
             this.__loadImg();
+            this.result = false;
+
             return this;
         },
         position: function (pinObject, baseObject) {
@@ -594,6 +647,9 @@
             if (Object.prototype.toString.call(lastArg) == "[object Boolean]") {
                 more = lastArg;
             }
+
+            this.enValueHiddenInput('');
+
             if (more) {
                 if (!code || !code.length || Object.prototype.toString.call(code) != '[object String]') {
                     this.result = false;
@@ -616,13 +672,13 @@
                 }
             }
 
-
             $.getJSON('http://vcode.360sht.com/verify?cb=?', {code: code, id: this.id}, $.proxy(function (res) {
 
                 this.value = code;
 
                 if (res.errcode == 0) {
                     this.result = true;
+                    this.enValueHiddenInput(res.data.tempId);
                     options.success && options.success(res.errcode, res.errmsg, res.data);
                     this.setting.onchecktrue(res.errcode, res.errmsg, res.data)
                     this.trigger('onchecktrue', res.errcode, res.errmsg, res.data);
@@ -630,8 +686,9 @@
 
                 } else {
                     this.result = false;
+                    this.enValueHiddenInput('');
                     options.error && options.error(res.errcode, res.errmsg, res.data);
-                    this.setting.oncheckfase(res.errcode, res.errmsg, res.data);
+                    this.setting.oncheckfalse(res.errcode, res.errmsg, res.data);
                     this.trigger('oncheckfalse', res.errcode, res.errmsg, res.data);
                 }
 
@@ -712,7 +769,10 @@
                                 this.txtCon.removeClass('error success').html(this.defaultHTML);
                             }
                             this.input.removeClass('error success');
+
+                            this.enValueHiddenInput('');
                             this.value = '';
+                            this.result = undefined;
                         }
                     }, this),
                     'focus.vcode': $.proxy(function () {
@@ -726,9 +786,15 @@
 
             this.after('change', $.proxy(function () {
                 this.input.val('');
+
                 if (this.noticeCon.length) {
-                    this.noticeCon.html(this.defaultHTML);
+                    this.noticeCon.removeClass('error success').html(this.defaultHTML);
                 }
+                if (this.setting.tips.length) {
+                    this.txtCon.removeClass('error success').html(this.defaultHTML);
+                }
+                this.input.removeClass('error success');
+
             }, this));
 
 
@@ -803,6 +869,19 @@
         //重写__createDom
         __createDom: function () {
             var dom = $('<img class="vcode_img" />');
+            dom.attr({uid: this.uid});
+
+            if (this.setting.hasHiddenInput) {
+                if (typeof this.setting.hasHiddenInput == 'string') {
+                    this.hiddenInput = $('<input type="hidden" name="' + this.setting.hasHiddenInput + '" id="' + this.setting.hasHiddenInput + '">');
+                } else if (typeof this.setting.hasHiddenInput == 'boolean') {
+                    this.hiddenInput = $('<input type="hidden" name="vcode_hidden_input_' + this.uid + '" id="vcode_hidden_input_' + this.uid + '">');
+
+                }
+                this.input.after(this.hiddenInput);
+            }
+
+
             this.wrapImg.append(dom);
             this.trigger('ondomready');
             return dom;
@@ -833,7 +912,9 @@
 
                         } else {
                             this.noticeCon.html(this.defaultHTML);
+                            this.enValueHiddenInput('');
                             this.value = '';
+                            this.result = undefined;
                         }
                     }, this),
                     'focus.vcode': $.proxy(function () {
@@ -848,7 +929,7 @@
             this.after('change', $.proxy(function () {
                 this.input.val('');
                 if (this.noticeCon.length) {
-                    this.noticeCon.html(this.defaultHTML);
+                    this.noticeCon.removeClass('error success').html(this.defaultHTML);
                 }
             }, this));
 

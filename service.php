@@ -6,7 +6,6 @@
  * Date: 14-1-11
  * Time: 下午3:29
  */
-
 define("PLUGIN_VCODE_SERVICE_HOST", 'http://vcode.360sht.com/');
 class service
 {
@@ -15,14 +14,16 @@ class service
      * @param string $code 客户端递交的校验码
      * @param string $token 服务器约定好的应用秘钥
      * @param string $appId 应用id
-     * @return bool|string  要请求的参数数组字符串
+	 * @param string $tempId 临时会话id
+     * @return bool|string  要请求的参数数组字符串	  
      */
-    public function buildRequestPara($code = "", $token = "", $appId = "")
+    public function buildRequestPara($code = "", $token = "", $appId = "", $tempId = "")
     {
         if (empty($code) || empty($token) || empty($appId)) return false;
         $para = array(
             'key' => md5(trim($code) . trim($token)),
-            'id' => $appId
+            'id' => $appId,
+			'tempId' => $tempId
         );
         return http_build_query($para);
     }

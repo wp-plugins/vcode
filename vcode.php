@@ -37,7 +37,8 @@ function vcode_footer() {
 //实例化VcodeLayerBox
 var vcode = new VcodeLayerBox({
     id: {$options['appid']},
-    baseInput: '#verify_code',
+    baseInput: '#vcode_code',
+    hasHiddenInput:'vcode_tempid',
     tips:'{$options['tips']}',
     className: 'vcode_theme_min',
         btns: [
@@ -63,16 +64,16 @@ function vcode_filter($comment) {
 	{
 		return $comment;
 	}
-	if(isset($_POST['code'])&&$_POST['code']!='')
+	if(isset($_POST['vcode_code'])&&$_POST['vcode_code']!='' && isset($_POST['vcode_tempid']) && $_POST['vcode_tempid']!='')
 	{
         global $options;
 		require_once("service.php");
 		$service = new service();
-		$verifyUrl = $service->buildRequestPara($_POST['code'], $options['token'], $options['appid']);
+		$verifyUrl = $service->buildRequestPara($_POST['vcode_code'], $options['token'], $options['appid'],$_POST['vcode_tempid']);
 		$response = $service->getHttpResponse($verifyUrl);
 		if($response['errcode']!='0')
 		{
-			wp_die("火柴手写码:".$response['errmsg']);
+			wp_die("火柴手写码:".$response['errmsg'].$response['errcode']);
 		}
 		return $comment;
 	}
@@ -85,7 +86,7 @@ function vcode_form()
 	{
 echo <<<EOF
 <p class="comment-form-vcode"><label for="url">验证码<span class="required">*</span></label>
-<input id="verify_code" class="text form-control " type="text" maxlength="6" name="code">
+<input id="vcode_code" class="text form-control " type="text" maxlength="6" name="vcode_code">
 </p>
 EOF;
     }
