@@ -25,7 +25,9 @@ License URI: http://www.gnu.org/licenses/gpl-2.0.html
 1.vcode comments 火柴手写码界面
 
 == Changelog ==
-none
+1.0.1
+fix bug
+
 
 == Frequently Asked Questions ==
 none
